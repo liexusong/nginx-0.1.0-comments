@@ -110,13 +110,13 @@ int main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
-    ngx_time_init();
+    ngx_time_init(); // 初始化时钟
 
 #if (HAVE_PCRE)
     ngx_regex_init();
 #endif
 
-    ngx_pid = ngx_getpid();
+    ngx_pid = ngx_getpid(); // 获取进程ID
 
     if (!(log = ngx_log_init_stderr())) {
         return 1;
@@ -136,6 +136,7 @@ int main(int argc, char *const *argv)
     ctx.argc = argc;
     ctx.argv = argv;
 
+    // 创建一个内存池给cycle使用
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
@@ -156,12 +157,13 @@ int main(int argc, char *const *argv)
         return 1;
     }
 
+    // 为所有模块编号
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = ngx_max_module++;
     }
 
-    cycle = ngx_init_cycle(&init_cycle);
+    cycle = ngx_init_cycle(&init_cycle); // 初始化周期对象(在core/ngx_cycle.c中)
     if (cycle == NULL) {
         if (ngx_test_config) {
             ngx_log_error(NGX_LOG_EMERG, log, 0,
@@ -179,7 +181,7 @@ int main(int argc, char *const *argv)
         return 0;
     }
 
-    ngx_os_status(cycle->log);
+    ngx_os_status(cycle->log); // 初始化对应的操作系统环境
 
     ngx_cycle = cycle;
 
@@ -205,23 +207,25 @@ int main(int argc, char *const *argv)
 #else
 
     if (!ngx_inherited && ccf->daemon) {
-        if (ngx_daemon(cycle->log) == NGX_ERROR) {
+        if (ngx_daemon(cycle->log) == NGX_ERROR) { // 启动daemon模式
             return 1;
         }
 
         ngx_daemonized = 1;
     }
 
+    // 创建pid文件
     if (ngx_create_pidfile(cycle, NULL) == NGX_ERROR) {
         return 1;
     }
 
 #endif
 
+    // master-worker模式(在os/unix/ngx_process_cycle.c中)
     if (ngx_process == NGX_PROCESS_MASTER) {
         ngx_master_process_cycle(cycle, &ctx);
 
-    } else {
+    } else {  // single模式
         ngx_single_process_cycle(cycle, &ctx);
     }
 

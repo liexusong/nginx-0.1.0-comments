@@ -36,6 +36,7 @@ static ngx_str_t  error_log = ngx_null_string;
 #endif
 
 
+// 初始化周期对象
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
@@ -52,15 +53,18 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
+    // 创建一个新的内存池给新的cycle对象使用
     if (!(pool = ngx_create_pool(16 * 1024, log))) {
         return NULL;
     }
     pool->log = log;
 
+    // 创建新的周期对象
     if (!(cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t)))) {
         ngx_destroy_pool(pool);
         return NULL;
     }
+    // 初始化周期对象
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
@@ -69,6 +73,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->root.data = (u_char *) NGX_PREFIX;
 
 
+    // paths数组
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
     if (!(cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *)))) {
         ngx_destroy_pool(pool);
@@ -106,6 +111,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->new_log->file->name = error_log;
 
 
+    // listener数组
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
     cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
     if (cycle->listening.elts == NULL) {
@@ -118,6 +124,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->listening.pool = pool;
 
 
+    // 创建各个模块的配置上下文的存储数组
     cycle->conf_ctx = ngx_pcalloc(pool, ngx_max_module * sizeof(void *));
     if (cycle->conf_ctx == NULL) {
         ngx_destroy_pool(pool);
@@ -125,6 +132,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
+    // 调用核心模块的create_conf()接口
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -159,6 +167,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.cmd_type = NGX_MAIN_CONF;
 
 
+    // 解析配置文件
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -171,6 +180,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
+    // 初始化核心模块(core module), 调用核心模块的init()接口
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -191,7 +201,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     failed = 0;
 
-
+    // 创建pid文件
 #if !(WIN32)
     if (ngx_create_pidfile(cycle, old_cycle) == NGX_ERROR) {
         failed = 1;
@@ -199,6 +209,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
 
 
+    // 打开在配置文件中需要打开的文件
     if (!failed) {
 
         part = &cycle->open_files.part;
@@ -219,6 +230,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 continue;
             }
 
+            // 打开文件句柄
             file[i].fd = ngx_open_file(file[i].name.data,
                                        NGX_FILE_RDWR,
                                        NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND);
@@ -265,6 +277,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         cycle->log->log_level = NGX_LOG_ERR;
     }
 
+    // 打开监听的socket
     if (!failed) {
         if (old_cycle->listening.nelts) {
             ls = old_cycle->listening.elts;
@@ -322,13 +335,13 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         if (!ngx_test_config && !failed) {
-            if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
+            if (ngx_open_listening_sockets(cycle) == NGX_ERROR) { // 开始监听socket
                 failed = 1;
             }
         }
     }
 
-    if (failed) {
+    if (failed) { // 此处为初始化失败后的处理, 做回滚处理
 
         /* rollback the new cycle configuration */
 
@@ -405,6 +418,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     pool->log = cycle->log;
 
+    // 调用所有模块的init_module()接口来初始化模块
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_module) {
             if (ngx_modules[i]->init_module(cycle) == NGX_ERROR) {
@@ -465,10 +479,16 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         return cycle;
     }
 
+    // 如果是热重启而且不是single模式,
+    // 那么就直接返回cycle, 不再执行下面的逻辑
     if (ngx_process == NGX_PROCESS_MASTER) {
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }
+
+    // 首次启动或者single模式都会执行到这里;
+    // 这里的主要工作是创建一个定时器ngx_clean_old_cycles();
+    // 定时去清理旧周期的数据;
 
     if (ngx_temp_pool == NULL) {
         ngx_temp_pool = ngx_create_pool(128, cycle->log);
@@ -711,6 +731,11 @@ void ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 }
 
 
+/*
+ * 此函数是定时观察就周期是否还有活的connection
+ * 如果没有就把就周期清除
+ * 否则就继续在下次定时器处理
+ */
 static void ngx_clean_old_cycles(ngx_event_t *ev)
 {
     ngx_uint_t     i, n, found, live;
