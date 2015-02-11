@@ -10,6 +10,13 @@
 #include <nginx.h>
 
 
+/*
+ * Nginx Http server must load modules:
+ * 1) core
+ * 2) event
+ * 3) http
+ */
+
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_getopt(ngx_master_ctx_t *ctx, ngx_cycle_t *cycle);
 static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);

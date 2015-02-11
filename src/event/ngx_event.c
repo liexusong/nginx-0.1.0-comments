@@ -189,6 +189,9 @@ ngx_module_t  ngx_event_core_module = {
 };
 
 
+/*
+ * 在ngx_cycle()函数中被调用, 用于初始化模块
+ */
 static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 {
 #if !(WIN32)
@@ -461,6 +464,9 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 }
 
 
+/*
+ * 当遇到event{...}时调用此接口
+ */
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     int                    m;
@@ -470,6 +476,7 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_event_module_t   *module;
 
     /* count the number of the event modules and set up their indices */
+    /* 统计事件模块的编号 */
 
     ngx_event_max_module = 0;
     for (m = 0; ngx_modules[m]; m++) {
@@ -480,8 +487,10 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_modules[m]->ctx_index = ngx_event_max_module++;
     }
 
+    /* (ctx) type is (void ***) */
     ngx_test_null(ctx, ngx_pcalloc(cf->pool, sizeof(void *)), NGX_CONF_ERROR);
 
+    /* (*ctx) type is (void **) */
     ngx_test_null(*ctx,
                   ngx_pcalloc(cf->pool, ngx_event_max_module * sizeof(void *)),
                   NGX_CONF_ERROR);
@@ -495,6 +504,9 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         module = ngx_modules[m]->ctx;
 
+        /* create configure context:
+         * epoll module is ngx_epoll_create_conf()
+         */
         if (module->create_conf) {
             ngx_test_null((*ctx)[ngx_modules[m]->ctx_index],
                           module->create_conf(cf->cycle),
@@ -519,6 +531,9 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         module = ngx_modules[m]->ctx;
 
+        /* call event module's init configure callback
+         * epoll module is ngx_epoll_init_conf()
+         */
         if (module->init_conf) {
             rv = module->init_conf(cf->cycle,
                                    (*ctx)[ngx_modules[m]->ctx_index]);
