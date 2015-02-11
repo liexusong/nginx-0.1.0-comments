@@ -10,15 +10,19 @@
 ngx_module_t *ngx_modules[] = {
     // 1) core module
 	&ngx_core_module,
+
     // 2) errlog module
     &ngx_errlog_module,
+
     // 3) configure module
     &ngx_conf_module,
+
     // 4) event module
     &ngx_events_module,
     &ngx_event_core_module,
     &ngx_rtsig_module,
     &ngx_epoll_module,
+
     // 5) http modules
     &ngx_http_module,
     &ngx_http_core_module,
@@ -51,6 +55,15 @@ ngx_module_t *ngx_modules[] = {
   * 当读到与模块相关的配置项时, Nginx会调用模块的相应接口;
   * 然后Nginx会在master进程时调用所有模块的init_module()接口, 具体在ngx_init_cycle()函数中被调用;
   * 接着Nginx会在worker进程中调用所有模块的init_process()接口, 具体在ngx_master_process_cycle()函数中被调用;
+
+  # 四个主要调用:
+  # ---------------------------------------------------------
+
+    main() -> ngx_init_cycle() -> ngx_master_process_cycle()
+                 \
+                  \___ ngx_conf_parse()
+
+  # ---------------------------------------------------------
 
 #endif
 
