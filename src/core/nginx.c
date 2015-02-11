@@ -40,6 +40,18 @@ ngx_module_t *ngx_modules[] = {
     NULL
 };
 
+ =========================================
+ 1) core module
+ 2) errlog module
+ 3) configure module
+ 4) event modules
+ 5) http modules
+
+  * Nginx会调用ngx_conf_parse()函数解析配置文件;
+  * 当读到与模块相关的配置项时, Nginx会调用模块的相应接口;
+  * 然后Nginx会在master进程时调用所有模块的init_module()接口, 具体在ngx_init_cycle()函数中被调用;
+  * 接着Nginx会在worker进程中调用所有模块的init_process()接口, 具体在ngx_master_process_cycle()函数中被调用;
+
 #endif
 
 #include <ngx_config.h>
