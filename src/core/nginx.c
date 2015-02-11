@@ -3,16 +3,23 @@
  * Copyright (C) Igor Sysoev
  */
 
-/* Which modules would load to Nginx
+#if 0
+
+* Which modules would load to Nginx *
 
 ngx_module_t *ngx_modules[] = {
-    &ngx_core_module,
+    // 1) core module
+	&ngx_core_module,
+    // 2) errlog module
     &ngx_errlog_module,
+    // 3) configure module
     &ngx_conf_module,
+    // 4) event module
     &ngx_events_module,
     &ngx_event_core_module,
     &ngx_rtsig_module,
     &ngx_epoll_module,
+    // 5) http modules
     &ngx_http_module,
     &ngx_http_core_module,
     &ngx_http_log_module,
@@ -33,7 +40,7 @@ ngx_module_t *ngx_modules[] = {
     NULL
 };
 
-*/
+#endif
 
 #include <ngx_config.h>
 #include <ngx_core.h>
