@@ -84,7 +84,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    *(ngx_http_conf_ctx_t **) conf = ctx;
+    *(ngx_http_conf_ctx_t **) conf = ctx; // 把新创建的配置上下文挂钩起来
 
     /* count the number of the http modules and set up their indices */
 

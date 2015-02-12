@@ -163,7 +163,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.cycle = cycle;
     conf.pool = pool;
     conf.log = log;
-    conf.module_type = NGX_CORE_MODULE;
+    conf.module_type = NGX_CORE_MODULE; // 需要读取core模块的配置
     conf.cmd_type = NGX_MAIN_CONF;
 
 

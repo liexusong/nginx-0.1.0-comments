@@ -8,6 +8,26 @@
 #include <ngx_core.h>
 
 
+/*
+   cycle->conf_ctx
+             |
+             v (void **)
+      +--------+--------+-----+--------+
+      | void * | void * | ... | void * |
+      +--------+--------+-----+--------+
+                   |
+                   v (ngx_http_conf_ctx_t *)
+                +---------+---------+---------+
+                | void ** | void ** | void ** |
+                +---------+---------+---------+
+                     |
+                     v (void **)
+                    +----------+----------+-----+----------+
+                    | module 1 | module 2 | ... | module n |
+                    +----------+----------+-----+----------+
+
+*/
+
 static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
@@ -66,18 +86,18 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     prev = NULL;
 #endif
 
-    if (filename) {
+    if (filename) { // 如果传了配置文件名的
 
         /* open configuration file */
 
-        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
+        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN); // 打开配置文件
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_open_file_n " %s failed", filename->data);
             return NGX_CONF_ERROR;
         }
 
-        prev = cf->conf_file;
+        prev = cf->conf_file; // 保存上一个配置周期的上下文
         if (!(cf->conf_file = ngx_palloc(cf->pool, sizeof(ngx_conf_file_t)))) {
             return NGX_CONF_ERROR;
         }
@@ -100,16 +120,13 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     }
 
     for ( ;; ) {
-        rc = ngx_conf_read_token(cf);
+        rc = ngx_conf_read_token(cf); // 从配置文件中读取一个配置命令(包括参数)
 
         /*
          * ngx_conf_read_token() returns NGX_OK, NGX_ERROR,
          * NGX_CONF_FILE_DONE or NGX_CONF_BLOCK_DONE
          */
 
-#if 0
-ngx_log_debug(cf->log, "token %d" _ rc);
-#endif
 
         if (rc == NGX_ERROR) {
             break;
@@ -145,30 +162,31 @@ ngx_log_debug(cf->log, "token %d" _ rc);
         name = (ngx_str_t *) cf->args->elts;
         found = 0;
 
+        // 遍历所有载入到nginx的模块
         for (m = 0; rc != NGX_ERROR && !found && ngx_modules[m]; m++) {
 
             /* look up the directive in the appropriate modules */
 
-            if (ngx_modules[m]->type != NGX_CONF_MODULE
-                && ngx_modules[m]->type != cf->module_type)
+            if (ngx_modules[m]->type != NGX_CONF_MODULE     /* 如果不是conf模块 */
+                && ngx_modules[m]->type != cf->module_type) /* 而且模块类型不匹配 */
             {
                 continue;
             }
 
+            // 当前模块没有配置命令
             cmd = ngx_modules[m]->commands;
             if (cmd == NULL) {
                 continue;
             }
 
+            // 从当前模块查找合适的配置命令
             while (cmd->name.len) {
                 if (name->len == cmd->name.len
                     && ngx_strcmp(name->data, cmd->name.data) == 0)
                 {
 
                     found = 1;
-#if 0
-ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
-#endif
+
                     /* is the directive's location right ? */
 
                     if ((cmd->type & cf->cmd_type) == 0) {
@@ -183,6 +201,7 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                     }
 
                     /* is the directive's argument count right ? */
+                    /* 配置的参数个数是否正确? */
 
                     if (cmd->type & NGX_CONF_ANY) {
                         valid = 1;
@@ -236,13 +255,13 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
 
                     conf = NULL;
 
-                    if (cmd->type & NGX_DIRECT_CONF) {
+                    if (cmd->type & NGX_DIRECT_CONF) {  // 只需要获得配置上下文的指针(一般这是创建好的配置上下文)
                         conf = ((void **) cf->ctx)[ngx_modules[m]->index];
 
-                    } else if (cmd->type & NGX_MAIN_CONF) {
+                    } else if (cmd->type & NGX_MAIN_CONF) {  // 需要获取配置上下文指针存放的地址(一般这是需要在配置命令回调中创建配置上下文)
                         conf = &(((void **) cf->ctx)[ngx_modules[m]->index]);
 
-                    } else if (cf->ctx) {
+                    } else if (cf->ctx) { // 当前配置上下文(cf->ctx)是一个结构体, 然后根据cmd->conf来获取所属模块在配置上下文的位置, 而此字段必须是(void**)类型/
                         confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                         if (confp) {
@@ -250,11 +269,7 @@ ngx_log_debug(cf->log, "command '%s'" _ cmd->name.data);
                         }
                     }
 
-                    rv = cmd->set(cf, cmd, conf);
-
-#if 0
-ngx_log_debug(cf->log, "rv: %d" _ rv);
-#endif
+                    rv = cmd->set(cf, cmd, conf); // 调用配置命令回调函数
 
                     if (rv == NGX_CONF_OK) {
                         break;
@@ -296,7 +311,7 @@ ngx_log_debug(cf->log, "rv: %d" _ rv);
     }
 
     if (filename) {
-        cf->conf_file = prev;
+        cf->conf_file = prev; // 返回到上一个配置上下文
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
@@ -334,9 +349,6 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
     b = cf->conf_file->buffer;
     start = b->pos;
 
-#if 0
-ngx_log_debug(cf->log, "TOKEN START");
-#endif
 
     for ( ;; ) {
 
