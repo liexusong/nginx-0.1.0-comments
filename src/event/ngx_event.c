@@ -201,12 +201,15 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_core_conf_t   *ccf;
     ngx_event_conf_t  *ecf;
 
+    // 获取core模块的配置上下文
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // 如果不是master-worker模式, 直接返回
     if (ccf->master == 0 || ngx_accept_mutex_ptr) {
         return NGX_OK;
     }
 
+    // 获取event_core模块的配置上下文
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
 
