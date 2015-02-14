@@ -228,10 +228,12 @@ static ngx_int_t ngx_event_module_init(ngx_cycle_t *cycle)
 
 #endif
 
+    // 创建共享内存
     if (!(shared = ngx_create_shared_memory(size, cycle->log))) {
         return NGX_ERROR;
     }
 
+    // 把变量指向共享内存
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_connection_counter = (ngx_atomic_t *) (shared + 128);
 
@@ -272,6 +274,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
+    // 如果accept时需要锁, 那么初始化锁
     if (ngx_accept_mutex_ptr && ccf->worker_processes > 1 && ecf->accept_mutex)
     {
         ngx_accept_mutex = ngx_accept_mutex_ptr;
@@ -285,6 +288,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     }
 #endif
 
+    // 初始化定时器
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -296,6 +300,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
             continue;
         }
 
+        // 初始化选定的事件模块
         if (ngx_modules[m]->ctx_index == ecf->use) {
             module = ngx_modules[m]->ctx;
             if (module->actions.init(cycle) == NGX_ERROR) {
@@ -306,12 +311,14 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
         }
     }
 
+    // 根据连接最大数来创建连接对象池
     cycle->connections = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
                                    cycle->log);
     if (cycle->connections == NULL) {
         return NGX_ERROR;
     }
 
+    // 初始化连接池
     c = cycle->connections;
     for (i = 0; i < cycle->connection_n; i++) {
         c[i].fd = (ngx_socket_t) -1;
@@ -321,6 +328,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 #endif
     }
 
+    // 初始化事件相关的对象
     cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
                                    cycle->log);
     if (cycle->read_events == NULL) {
@@ -352,6 +360,8 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
     /* for each listening socket */
+
+    // 用事件对象与监听的socket相关联
 
     s = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -443,8 +453,9 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
 #else
 
-        rev->event_handler = &ngx_event_accept;
+        rev->event_handler = &ngx_event_accept; // 读事件的回调函数
 
+        // 如果需要accept锁, 那么延迟添加到事件池中
         if (ngx_accept_mutex) {
             continue;
         }
@@ -468,7 +479,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
 
 /*
- * 当遇到event{...}时调用此接口
+ * 当遇到event{...}配置块时调用此接口
  */
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
