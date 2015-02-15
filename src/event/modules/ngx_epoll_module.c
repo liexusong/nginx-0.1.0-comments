@@ -425,7 +425,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "epoll expired timer");
 
-        // 把超时的事件放入到处理队列中
+        // 处理超时事件
         ngx_event_expire_timers((ngx_msec_t)
                                     (ngx_elapsed_msec - ngx_old_elapsed_msec));
 
@@ -649,6 +649,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         ngx_mutex_unlock(ngx_posted_events_mutex);
     }
 
+    // 处理超时事件
     if (expire && delta) {
         ngx_event_expire_timers((ngx_msec_t) delta);
     }

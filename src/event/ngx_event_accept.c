@@ -20,6 +20,9 @@ static void ngx_close_accepted_socket(ngx_socket_t s, ngx_log_t *log);
 static size_t ngx_accept_log_error(void *data, char *buf, size_t len);
 
 
+/*
+ * 监听socket的回调函数
+ */
 void ngx_event_accept(ngx_event_t *ev)
 {
     ngx_uint_t             instance, accepted;
@@ -43,7 +46,7 @@ void ngx_event_accept(ngx_event_t *ev)
         ev->available = ecf->multi_accept;
     }
 
-    ls = ev->data;
+    ls = ev->data; // listening
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "accept on %s, ready: %d",
@@ -55,7 +58,7 @@ void ngx_event_accept(ngx_event_t *ev)
 
     do {
 
-        if (pool == NULL) {
+        if (pool == NULL) { // 创建内存池
 
             /*
              * Create the pool before accept() to avoid the copying of
@@ -68,11 +71,13 @@ void ngx_event_accept(ngx_event_t *ev)
             }
         }
 
+        // sockaddr
         if (!(sa = ngx_palloc(pool, ls->listening->socklen))) {
             ngx_destroy_pool(pool);
             return;
         }
 
+        // log
         if (!(log = ngx_palloc(pool, sizeof(ngx_log_t)))) {
             ngx_destroy_pool(pool);
             return;
@@ -81,6 +86,7 @@ void ngx_event_accept(ngx_event_t *ev)
         ngx_memcpy(log, ls->log, sizeof(ngx_log_t));
         pool->log = log;
 
+        // accept log context
         if (!(ctx = ngx_palloc(pool, sizeof(ngx_accept_log_ctx_t)))) {
             ngx_destroy_pool(pool);
             return;
@@ -340,7 +346,7 @@ void ngx_event_accept(ngx_event_t *ev)
         log->data = NULL;
         log->handler = NULL;
 
-        ls->listening->handler(c);
+        ls->listening->handler(c); // 对于HTTP模块, handler()就是ngx_http_init_connection()
 
         if (ngx_event_flags & NGX_HAVE_KQUEUE_EVENT) {
             ev->available--;

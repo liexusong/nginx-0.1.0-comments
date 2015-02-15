@@ -69,7 +69,7 @@ ngx_msec_t ngx_event_find_timer(void)
 
 
 /*
- * 把超时的事件添加到处理队列中
+ * 处理超时事件, 因为超时事件的处理很简单, 所以不必放到处理队列中, 可以直接处理
  */
 void ngx_event_expire_timers(ngx_msec_t timer)
 {
@@ -91,9 +91,11 @@ void ngx_event_expire_timers(ngx_msec_t timer)
             return;
         }
 
+        // 红黑树最小节点
         node = ngx_rbtree_min((ngx_rbtree_t *) ngx_event_timer_rbtree,
                               &ngx_event_timer_sentinel);
 
+        // 如果超时了
         if (node->key <= (ngx_msec_t)
                          (ngx_old_elapsed_msec + timer) / NGX_TIMER_RESOLUTION)
         {
