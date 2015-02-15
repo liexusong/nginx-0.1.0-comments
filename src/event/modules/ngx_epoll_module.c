@@ -106,6 +106,7 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
     ngx_epoll_create_conf,               /* create configuration */
     ngx_epoll_init_conf,                 /* init configuration */
 
+    // 操作接口
     {
         ngx_epoll_add_event,             /* add an event */
         ngx_epoll_del_event,             /* delete an event */
@@ -130,6 +131,9 @@ ngx_module_t  ngx_epoll_module = {
 };
 
 
+/*
+ * epoll操作接口的初始化
+ */
 static int ngx_epoll_init(ngx_cycle_t *cycle)
 {
     size_t             n;
@@ -141,7 +145,7 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
     epcf = ngx_event_get_conf(cycle->conf_ctx, ngx_epoll_module);
 
     if (ep == -1) {
-        ep = epoll_create(ecf->connections / 2);
+        ep = epoll_create(ecf->connections / 2); // 创建epoll句柄
 
         if (ep == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -164,9 +168,9 @@ static int ngx_epoll_init(ngx_cycle_t *cycle)
 
     nevents = epcf->events;
 
-    ngx_io = ngx_os_io;
+    ngx_io = ngx_os_io; // IO接口
 
-    ngx_event_actions = ngx_epoll_module_ctx.actions;
+    ngx_event_actions = ngx_epoll_module_ctx.actions; // 事件接口
 
 #if (HAVE_CLEAR_EVENT)
     ngx_event_flags = NGX_USE_CLEAR_EVENT
@@ -196,6 +200,9 @@ static void ngx_epoll_done(ngx_cycle_t *cycle)
 }
 
 
+/*
+ * 把fd添加到事件库中进行监听
+ */
 static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 {
     int                  op, prev;
@@ -205,6 +212,7 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 
     c = ev->data;
 
+    // 读事件
     if (event == NGX_READ_EVENT) {
         e = c->write;
         prev = EPOLLOUT;
@@ -220,6 +228,7 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 #endif
     }
 
+    // 如果此fd已经正在监听另一种事件
     if (e->active) {
         op = EPOLL_CTL_MOD;
         event |= prev;
@@ -235,6 +244,7 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
                    "epoll add event: fd:%d op:%d ev:%08X",
                    c->fd, op, ee.events);
 
+    // 把fd添加到epoll中进行监听
     if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
                       "epoll_ctl(%d, %d) failed", op, c->fd);
@@ -250,6 +260,9 @@ static int ngx_epoll_add_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
+/*
+ * 把fd相应的事件从epoll中删除
+ */
 static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 {
     int                  op, prev;
@@ -306,6 +319,12 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 }
 
 
+/*
+ * 与ngx_epoll_add_event()差不多,
+ * 不过与与ngx_epoll_add_event()不一样的是,
+ * ngx_epoll_add_connection()关注所有的事件,
+ * 而与ngx_epoll_add_event()只关注某一事件.
+ */
 static int ngx_epoll_add_connection(ngx_connection_t *c)
 {
     struct epoll_event  ee;
@@ -366,6 +385,9 @@ static int ngx_epoll_del_connection(ngx_connection_t *c, u_int flags)
 }
 
 
+/*
+ * 开始处理事件
+ */
 int ngx_epoll_process_events(ngx_cycle_t *cycle)
 {
     int                events;
@@ -380,8 +402,8 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_connection_t  *c;
     ngx_epoch_msec_t   delta;
 
-    for ( ;; ) { 
-        timer = ngx_event_find_timer();
+    for ( ;; ) {
+        timer = ngx_event_find_timer(); // 找到最快超时的事件
 
 #if (NGX_THREADS)
 
@@ -396,13 +418,14 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 
 #endif
 
-        if (timer != 0) {
+        if (timer != 0) { // 如果还没有已经超时的事件, 直接跳出循环
             break;
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "epoll expired timer");
 
+        // 把超时的事件放入到处理队列中
         ngx_event_expire_timers((ngx_msec_t)
                                     (ngx_elapsed_msec - ngx_old_elapsed_msec));
 
@@ -413,7 +436,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 
     /* NGX_TIMER_INFINITE == INFTIM */
 
-    if (timer == NGX_TIMER_INFINITE) {
+    if (timer == NGX_TIMER_INFINITE) { // 如果没有定时事件, 那么就不设置超时时间
         expire = 0;
 
     } else {
@@ -424,17 +447,18 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     accept_lock = 0;
 
     if (ngx_accept_mutex) {
-        if (ngx_accept_disabled > 0) {
+        if (ngx_accept_disabled > 0) { // 要延时accept操作
             ngx_accept_disabled--;
 
         } else {
-            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) { // 尝试获得accept锁
                 return NGX_ERROR;
             }
 
-            if (ngx_accept_mutex_held) {
+            if (ngx_accept_mutex_held) { // 获得了accept锁
                 accept_lock = 1;
 
+            // 没获得accept锁, 而且没有定时事件, 那么也需要设置一个超时时间, 因为需要下次等待下一次获取accept锁
             } else if (timer == NGX_TIMER_INFINITE
                        || timer > ngx_accept_mutex_delay)
             {
@@ -455,19 +479,21 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         err = 0;
     }
 
+    // 更新服务器时间
     ngx_gettimeofday(&tv);
     ngx_time_update(tv.tv_sec);
 
-    delta = ngx_elapsed_msec;
+    // 从服务器开始到现在共运行的时间
+    delta = ngx_elapsed_msec; // 上一次处理的时间
     ngx_elapsed_msec = (ngx_epoch_msec_t) tv.tv_sec * 1000
-                                          + tv.tv_usec / 1000 - ngx_start_msec;
+          + tv.tv_usec / 1000 - ngx_start_msec; // 现在的处理事件
 
     if (timer != NGX_TIMER_INFINITE) {
-        delta = ngx_elapsed_msec - delta;
+        delta = ngx_elapsed_msec - delta; // 两次处理相隔多少时间
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "epoll timer: %d, delta: %d", timer, (int) delta);
-    } else {
+    } else {  // 一般这里都是有错误, 错误是未知的
         if (events == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "epoll_wait() returned no events without timeout");
@@ -497,14 +523,17 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 
     log = cycle->log;
 
+    // 开始处理可读写的事件
+
     for (i = 0; i < events; i++) {
-        c = event_list[i].data.ptr;
+        c = event_list[i].data.ptr; // 获取connection
 
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
 
-        rev = c->read;
+        rev = c->read; // 读事件
 
+        // 有问题的fd
         if (c->fd == -1 || rev->instance != instance) {
 
             /*
@@ -537,7 +566,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
                           c->fd, event_list[i].events);
         }
 
-        wev = c->write;
+        wev = c->write; // 写事件
 
         if ((event_list[i].events & (EPOLLOUT|EPOLLERR|EPOLLHUP))
             && wev->active)
@@ -580,16 +609,16 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             if (!ngx_threaded && !ngx_accept_mutex_held) {
                 rev->event_handler(rev);
 
-            } else if (!rev->accept) {
+            } else if (!rev->accept) { // 不是accept事件
                 ngx_post_event(rev);
 
-            } else if (ngx_accept_disabled <= 0) {
+            } else if (ngx_accept_disabled <= 0) { // 如果是accept事件
 
                 ngx_mutex_unlock(ngx_posted_events_mutex);
 
-                rev->event_handler(rev);
+                rev->event_handler(rev); // 直接进行accept()操作
 
-                if (ngx_accept_disabled > 0) {
+                if (ngx_accept_disabled > 0) { // ngx_event_accept()操作可能会重新设置ngx_accept_disabled的值
                     ngx_accept_mutex_unlock();
                     accept_lock = 0;
                 }
@@ -609,6 +638,9 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         }
     }
 
+    // 解开accept的锁, 但并没有将ngx_accept_mutex_held设置为0, 也就是说此时并没有把监听socket从epoll中删除.
+    // nginx这样做的目的是把删除监听socket的操作(ngx_disable_accept_events)放到下一次ngx_trylock_accept_mutex()时.
+    // 这样就不会因为删除监听socket而延时处理可读写的fd.
     if (accept_lock) {
         ngx_accept_mutex_unlock();
     }

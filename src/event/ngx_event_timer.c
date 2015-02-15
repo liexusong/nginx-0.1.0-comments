@@ -68,6 +68,9 @@ ngx_msec_t ngx_event_find_timer(void)
 }
 
 
+/*
+ * 把超时的事件添加到处理队列中
+ */
 void ngx_event_expire_timers(ngx_msec_t timer)
 {
     ngx_event_t   *ev;

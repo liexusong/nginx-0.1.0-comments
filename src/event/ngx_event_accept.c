@@ -354,6 +354,11 @@ void ngx_event_accept(ngx_event_t *ev)
 
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
+    // 此设计是:
+	// 使用共享内存ngx_accept_mutex来作为锁
+	// 每个worker进程都必须使用原子操作把ngx_accept_mutex设置为当前进程ID才能算获得锁
+	// ngx_atomic_cmp_set(num, old, new)接口的意思是, 如果num当前的值等于old, 那么就把num设置为new
+	// 否则返回false
     if (*ngx_accept_mutex == 0
         && ngx_atomic_cmp_set(ngx_accept_mutex, 0, ngx_pid))
     {
@@ -372,8 +377,8 @@ ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
-    if (ngx_accept_mutex_held) {
-        if (ngx_disable_accept_events(cycle) == NGX_ERROR) {
+    if (ngx_accept_mutex_held) { // 如果上一次跟这次是同一个进程获取accept锁
+        if (ngx_disable_accept_events(cycle) == NGX_ERROR) { // 先禁止监听所有的socket
             return NGX_ERROR;
         }
 
