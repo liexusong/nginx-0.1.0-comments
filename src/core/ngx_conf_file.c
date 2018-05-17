@@ -90,7 +90,8 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         /* open configuration file */
 
-        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN); // 打开配置文件
+        // 打开配置文件
+        fd = ngx_open_file(filename->data, NGX_FILE_RDONLY, NGX_FILE_OPEN);
         if (fd == NGX_INVALID_FILE) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_open_file_n " %s failed", filename->data);
@@ -255,13 +256,19 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
                     conf = NULL;
 
-                    if (cmd->type & NGX_DIRECT_CONF) {  // 只需要获得配置上下文的指针(一般这是创建好的配置上下文)
+                    // 只需要获得配置上下文的指针, 一般用于修改上下文成员
+                    if (cmd->type & NGX_DIRECT_CONF) {
                         conf = ((void **) cf->ctx)[ngx_modules[m]->index];
 
-                    } else if (cmd->type & NGX_MAIN_CONF) {  // 需要获取配置上下文指针存放的地址(一般这是需要在配置命令回调中创建配置上下文)
+                    // 需要获取配置上下文指针存放的地址
+                    // 一般这是需要在配置命令回调中创建配置上下文
+                    } else if (cmd->type & NGX_MAIN_CONF) {
                         conf = &(((void **) cf->ctx)[ngx_modules[m]->index]);
 
-                    } else if (cf->ctx) { // 当前配置上下文(cf->ctx)是一个结构体, 然后根据cmd->conf来获取所属模块在配置上下文的位置, 而此字段必须是(void**)类型/
+                    // 当前配置上下文(cf->ctx)是一个结构体,
+                    // 然后根据cmd->conf来获取所属模块在配置上下文的位置,
+                    // 而此字段必须是(void**)类型
+                    } else if (cf->ctx) {
                         confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                         if (confp) {
@@ -578,6 +585,11 @@ static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+ * 配置文件是否绝对路径?
+ * 是的话返回OK!
+ * 否则设置为绝对的路径.
+ */
 ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     u_char     *p;

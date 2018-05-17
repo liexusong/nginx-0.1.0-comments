@@ -39,12 +39,12 @@ static ngx_command_t  ngx_http_commands[] = {
     ngx_null_command
 };
 
-    
+
 static ngx_core_module_t  ngx_http_module_ctx = {
     ngx_string("http"),
     NULL,
     NULL
-};  
+};
 
 
 ngx_module_t  ngx_http_module = {
@@ -520,7 +520,7 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
             ls->addr_ntop = 1;
 
-            ls->handler = ngx_http_init_connection;
+            ls->handler = ngx_http_init_connection; // accept()之后第一个调用的函数
 
             cscf = in_addr[a].core_srv_conf;
             ls->pool_size = cscf->connection_pool_size;

@@ -74,7 +74,7 @@ ngx_module_t *ngx_modules[] = {
 
   ngx_conf_parse()函数解释:
   =========================
-  
+
 
 #endif
 
@@ -184,7 +184,7 @@ int main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
-    ngx_time_init(); // 初始化时钟
+    ngx_time_init(); // 初始化Nginx时间
 
 #if (HAVE_PCRE)
     ngx_regex_init();
@@ -192,7 +192,7 @@ int main(int argc, char *const *argv)
 
     ngx_pid = ngx_getpid(); // 获取进程ID
 
-    if (!(log = ngx_log_init_stderr())) {
+    if (!(log = ngx_log_init_stderr())) { // 初始化标准错误日志对象
         return 1;
     }
 
@@ -211,10 +211,12 @@ int main(int argc, char *const *argv)
     ctx.argv = argv;
 
     // 创建一个内存池给cycle使用
+
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
 
+    // 读取启动选项
     if (ngx_getopt(&ctx, &init_cycle) == NGX_ERROR) {
         return 1;
     }
@@ -223,6 +225,7 @@ int main(int argc, char *const *argv)
         log->log_level = NGX_LOG_INFO;
     }
 
+    // 初始化操作系统环境
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }
@@ -237,7 +240,8 @@ int main(int argc, char *const *argv)
         ngx_modules[i]->index = ngx_max_module++;
     }
 
-    cycle = ngx_init_cycle(&init_cycle); // 初始化周期对象(在core/ngx_cycle.c中)
+    // 初始化生命周期对象(在core/ngx_cycle.c中)
+    cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
             ngx_log_error(NGX_LOG_EMERG, log, 0,
@@ -255,7 +259,7 @@ int main(int argc, char *const *argv)
         return 0;
     }
 
-    ngx_os_status(cycle->log); // 初始化对应的操作系统环境
+    ngx_os_status(cycle->log);
 
     ngx_cycle = cycle;
 
@@ -280,8 +284,8 @@ int main(int argc, char *const *argv)
 
 #else
 
-    if (!ngx_inherited && ccf->daemon) {
-        if (ngx_daemon(cycle->log) == NGX_ERROR) { // 启动daemon模式
+    if (!ngx_inherited && ccf->daemon) { // 是否要启动daemon模式
+        if (ngx_daemon(cycle->log) == NGX_ERROR) {
             return 1;
         }
 

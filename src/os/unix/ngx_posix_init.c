@@ -90,12 +90,13 @@ ngx_int_t ngx_posix_init(ngx_log_t *log)
     ngx_signal_t      *sig;
     struct sigaction   sa;
 
-    ngx_pagesize = getpagesize();
+    ngx_pagesize = getpagesize(); // 获取内存页大小
 
     if (ngx_ncpu == 0) {
         ngx_ncpu = 1;
     }
 
+    // 初始化信号处理函数
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = sig->handler;
@@ -107,6 +108,7 @@ ngx_int_t ngx_posix_init(ngx_log_t *log)
         }
     }
 
+    // 获取系统支持的最大socket数
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed)");

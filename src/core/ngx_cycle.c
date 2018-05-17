@@ -53,7 +53,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
-    // 创建一个新的内存池给新的cycle对象使用
+    // 创建一个新的内存池给新的cycle对象使用(16K)
     if (!(pool = ngx_create_pool(16 * 1024, log))) {
         return NULL;
     }
@@ -64,6 +64,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_pool(pool);
         return NULL;
     }
+
     // 初始化周期对象
     cycle->pool = pool;
     cycle->log = log;
@@ -71,7 +72,6 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->conf_file = old_cycle->conf_file;
     cycle->root.len = sizeof(NGX_PREFIX) - 1;
     cycle->root.data = (u_char *) NGX_PREFIX;
-
 
     // paths数组
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
@@ -95,6 +95,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         n = 20;
     }
 
+    // 初始化打开文件列表
     if (ngx_list_init(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
                                                                   == NGX_ERROR)
     {
@@ -102,7 +103,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
-
+    // 使用标准错误作为log输出
     if (!(cycle->new_log = ngx_log_create_errlog(cycle, NULL))) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -111,7 +112,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->new_log->file->name = error_log;
 
 
-    // listener数组
+    // 创建listener数组
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
     cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
     if (cycle->listening.elts == NULL) {
@@ -163,7 +164,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.cycle = cycle;
     conf.pool = pool;
     conf.log = log;
-    conf.module_type = NGX_CORE_MODULE; // 需要读取core模块的配置
+    conf.module_type = NGX_CORE_MODULE; // 需要读取核心(core)模块的配置
     conf.cmd_type = NGX_MAIN_CONF;
 
 
@@ -271,6 +272,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     cycle->log = cycle->new_log;
+
     pool->log = cycle->new_log;
 
     if (cycle->log->log_level == 0) {
@@ -335,7 +337,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         if (!ngx_test_config && !failed) {
-            if (ngx_open_listening_sockets(cycle) == NGX_ERROR) { // 开始监听socket
+            // 打开并开始开始监听socket
+            if (ngx_open_listening_sockets(cycle) == NGX_ERROR) {
                 failed = 1;
             }
         }
@@ -434,7 +437,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
-        if (ls[i].remain) {
+        if (ls[i].remain) { // 如果当前listening socket还有客户端在处理, 先不关闭
             continue;
         }
 
@@ -546,7 +549,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 
         /*
          * do not create the pid file in the first ngx_init_cycle() call
-         * because we need to write the demonized process pid 
+         * because we need to write the demonized process pid
          */
 
         return NGX_OK;
@@ -603,7 +606,7 @@ ngx_int_t ngx_create_pidfile(ngx_cycle_t *cycle, ngx_cycle_t *old_cycle)
 
 
 void ngx_delete_pidfile(ngx_cycle_t *cycle)
-{   
+{
     u_char           *name;
     ngx_core_conf_t  *ccf;
 
@@ -616,7 +619,7 @@ void ngx_delete_pidfile(ngx_cycle_t *cycle)
     if (ngx_inherited && getppid() > 1) {
         name = ccf->newpid.data;
 
-    } else { 
+    } else {
         name = ccf->pid.data;
     }
 

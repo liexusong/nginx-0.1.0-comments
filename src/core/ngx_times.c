@@ -115,7 +115,7 @@ ngx_int_t ngx_time_mutex_init(ngx_log_t *log)
 
 #endif
 
-
+// 更新Nginx的时间
 void ngx_time_update(time_t s)
 {
     u_char    *p;
@@ -143,7 +143,7 @@ void ngx_time_update(time_t s)
 
 #endif
 
-    ngx_time() = s;
+    ngx_time() = s; // 更新Nginx的时间
 
     ngx_gmtime(s, &ngx_cached_gmtime);
 
@@ -271,12 +271,13 @@ void ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
     ngx_int_t  sec, min, hour, mday, mon, year, wday, yday, days;
 
-    days = t / 86400;
+    days = t / 86400; // 把时间戳转换成天数
 
     /* Jaunary 1, 1970 was Thursday */
-    wday = (4 + days) % 7;
+    wday = (4 + days) % 7; // 获取星期数
 
-    t %= 86400;
+    t %= 86400;    // 转换成天数剩余的秒数
+    // 计算时分秒
     hour = t / 3600;
     t %= 3600;
     min = t / 60;
