@@ -5,11 +5,11 @@
 
 #if 0
 
-* Which modules would load to Nginx *
+ngx_modules由configure之后生成...在objs/ngx_modules.c
 
 ngx_module_t *ngx_modules[] = {
     // 1) core module
-	&ngx_core_module,
+    &ngx_core_module,
 
     // 2) errlog module
     &ngx_errlog_module,

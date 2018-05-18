@@ -359,47 +359,44 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
     for ( ;; ) {
 
-        if (b->pos >= b->last) {
+        if (b->pos >= b->last) { // 从配置文件中读取一部分数据
+            int last_len = b->pos - start;
+
             if (cf->conf_file->file.offset
                                  >= ngx_file_size(&cf->conf_file->file.info)) {
                 return NGX_CONF_FILE_DONE;
             }
 
-            if (b->pos - start) {
-                ngx_memcpy(b->start, start, b->pos - start);
+            if (last_len) {
+                ngx_memcpy(b->start, start, last_len);
             }
 
             n = ngx_read_file(&cf->conf_file->file,
-                              b->start + (b->pos - start),
-                              b->end - (b->start + (b->pos - start)),
+                              b->start + last_len,
+                              b->end - (b->start + last_len),
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            b->pos = b->start + (b->pos - start);
+            b->pos = b->start + last_len;
             start = b->start;
             b->last = b->pos + n;
         }
 
-        ch = *b->pos++;
+        ch = *b->pos++; // 缓冲区的pos指针移动到下一个字节
 
-#if 0
-ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
-              last_space _ need_space _
-              quoted _ s_quoted _ d_quoted _ ch);
-#endif
 
-        if (ch == LF) {
-            cf->conf_file->line++;
+        if (ch == LF) {            // 如果是换行符
+            cf->conf_file->line++; // 行号增加1
 
-            if (sharp_comment) {
+            if (sharp_comment) {   // 清空注释标志(因为注释以行结束)
                 sharp_comment = 0;
             }
         }
 
-        if (sharp_comment) {
+        if (sharp_comment) { // 如果是注释, 跳过字符的处理
             continue;
         }
 
@@ -408,7 +405,7 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
             continue;
         }
 
-        if (need_space) {
+        if (need_space) { // 如果下一个字节必须是空白
             if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
                 last_space = 1;
                 need_space = 0;
@@ -427,7 +424,7 @@ ngx_log_debug(cf->log, "%d:%d:%d:%d:%d '%c'" _
             return NGX_ERROR;
         }
 
-        if (last_space) {
+        if (last_space) { // 如果上一个字符是空白
             if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
                 continue;
             }

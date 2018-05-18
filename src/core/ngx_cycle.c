@@ -36,7 +36,7 @@ static ngx_str_t  error_log = ngx_null_string;
 #endif
 
 
-// 初始化周期对象
+// 初始化Nginx生命周期对象
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
@@ -70,7 +70,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->log = log;
     cycle->old_cycle = old_cycle;
     cycle->conf_file = old_cycle->conf_file;
-    cycle->root.len = sizeof(NGX_PREFIX) - 1;
+    cycle->root.len = sizeof(NGX_PREFIX) - 1;  // NGX_PREFIX通过configure时指定--prefix参数设置
     cycle->root.data = (u_char *) NGX_PREFIX;
 
     // paths数组
@@ -142,7 +142,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         module = ngx_modules[i]->ctx;
 
         if (module->create_conf) {
-            rv = module->create_conf(cycle);
+            rv = module->create_conf(cycle); // 创建配置上下文
             if (rv == NGX_CONF_ERROR) {
                 ngx_destroy_pool(pool);
                 return NULL;
@@ -187,7 +187,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
             continue;
         }
 
-        module = ngx_modules[i]->ctx;
+        module = ngx_modules[i]->ctx; // ngx_core_module_t
 
         if (module->init_conf) {
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
