@@ -99,12 +99,12 @@ static ngx_command_t  ngx_events_commands[] = {
       ngx_null_command
 };
 
-    
+
 static ngx_core_module_t  ngx_events_module_ctx = {
     ngx_string("events"),
     NULL,
     NULL
-};  
+};
 
 
 ngx_module_t  ngx_events_module = {
@@ -479,7 +479,7 @@ static ngx_int_t ngx_event_process_init(ngx_cycle_t *cycle)
 
 
 /*
- * 当遇到event{...}配置块时调用此接口
+ * 当遇到events{}配置块时触发
  */
 static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -501,10 +501,8 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_modules[m]->ctx_index = ngx_event_max_module++;
     }
 
-    /* (ctx) type is (void ***) */
     ngx_test_null(ctx, ngx_pcalloc(cf->pool, sizeof(void *)), NGX_CONF_ERROR);
 
-    /* (*ctx) type is (void **) */
     ngx_test_null(*ctx,
                   ngx_pcalloc(cf->pool, ngx_event_max_module * sizeof(void *)),
                   NGX_CONF_ERROR);
@@ -717,7 +715,7 @@ static void *ngx_event_create_conf(ngx_cycle_t *cycle)
     return ecf;
 }
 
-
+// 初始化时间模块配置信息
 static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_event_conf_t  *ecf = conf;
@@ -769,7 +767,7 @@ static char *ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     m = -1;
     module = NULL;
 
-    for (i = 0; ngx_modules[i]; i++) {
+    for (i = 0; ngx_modules[i]; i++) { // 没有最合适的就选择第一个模块
         if (ngx_modules[i]->type == NGX_EVENT_MODULE) {
             module = ngx_modules[i]->ctx;
 

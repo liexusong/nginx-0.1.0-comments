@@ -9,22 +9,22 @@
 
 
 /*
-   cycle->conf_ctx
-             |
-             v (void **)
-      +--------+--------+-----+--------+
-      | void * | void * | ... | void * |
-      +--------+--------+-----+--------+
-                   |
-                   v (ngx_http_conf_ctx_t *)
-                +---------+---------+---------+
-                | void ** | void ** | void ** |
-                +---------+---------+---------+
-                     |
-                     v (void **)
-                    +----------+----------+-----+----------+
-                    | module 1 | module 2 | ... | module n |
-                    +----------+----------+-----+----------+
+cycle->conf_ctx
+          |
+          v (void **)
+          +--------+--------+-----+--------+
+          | void * | void * | ... | void * |
+          +--------+--------+-----+--------+
+                        |
+                        v (ngx_http_conf_ctx_t *)
+                        +---------+---------+---------+
+                        | void ** | void ** | void ** |
+                        +---------+---------+---------+
+                             |
+                             v (void **)
+                             +----------+----------+-----+----------+
+                             | module 1 | module 2 | ... | module n |
+                             +----------+----------+-----+----------+
 
 */
 
@@ -168,7 +168,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
             /* look up the directive in the appropriate modules */
 
-            if (ngx_modules[m]->type != NGX_CONF_MODULE     /* 如果不是conf模块 */
+            if (ngx_modules[m]->type != NGX_CONF_MODULE  /* 如果不是conf模块 */
                 && ngx_modules[m]->type != cf->module_type) /* 而且模块类型不匹配 */
             {
                 continue;
@@ -204,10 +204,10 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                     /* is the directive's argument count right ? */
                     /* 配置的参数个数是否正确? */
 
-                    if (cmd->type & NGX_CONF_ANY) {
+                    if (cmd->type & NGX_CONF_ANY) { // 任意参数
                         valid = 1;
 
-                    } else if (cmd->type & NGX_CONF_FLAG) {
+                    } else if (cmd->type & NGX_CONF_FLAG) { // 需要2个参数
 
                         if (cf->args->nelts == 2) {
                             valid = 1;
@@ -215,7 +215,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                             valid = 0;
                         }
 
-                    } else if (cmd->type & NGX_CONF_1MORE) {
+                    } else if (cmd->type & NGX_CONF_1MORE) { // 大于1个参数
 
                         if (cf->args->nelts > 1) {
                             valid = 1;
@@ -223,7 +223,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                             valid = 0;
                         }
 
-                    } else if (cmd->type & NGX_CONF_2MORE) {
+                    } else if (cmd->type & NGX_CONF_2MORE) { // 大于2个参数
 
                         if (cf->args->nelts > 2) {
                             valid = 1;
@@ -256,18 +256,18 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
                     conf = NULL;
 
-                    // 只需要获得配置上下文的指针, 一般用于修改上下文成员
+                    // 需要配置上下文实体
                     if (cmd->type & NGX_DIRECT_CONF) {
                         conf = ((void **) cf->ctx)[ngx_modules[m]->index];
 
                     // 需要获取配置上下文指针存放的地址
-                    // 一般这是需要在配置命令回调中创建配置上下文
+                    // 一般需要在配置命令回调中创建配置上下文
                     } else if (cmd->type & NGX_MAIN_CONF) {
                         conf = &(((void **) cf->ctx)[ngx_modules[m]->index]);
 
                     // 当前配置上下文(cf->ctx)是一个结构体,
                     // 然后根据cmd->conf来获取所属模块在配置上下文的位置,
-                    // 而此字段必须是(void**)类型
+                    // 而此字段必须是(void**)类型, 例如: http模块
                     } else if (cf->ctx) {
                         confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
@@ -387,7 +387,6 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
         ch = *b->pos++; // 缓冲区的pos指针移动到下一个字节
 
-
         if (ch == LF) {            // 如果是换行符
             cf->conf_file->line++; // 行号增加1
 
@@ -400,7 +399,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
             continue;
         }
 
-        if (quoted) {
+        if (quoted) { // 这个是用来支持换行
             quoted = 0;
             continue;
         }
@@ -424,7 +423,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
             return NGX_ERROR;
         }
 
-        if (last_space) { // 如果上一个字符是空白
+        if (last_space) { // 如果上一个字符是空白(刚开始也算是这个状态)
             if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
                 continue;
             }
@@ -435,7 +434,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
             case ';':
             case '{':
-                if (cf->args->nelts == 0) {
+                if (cf->args->nelts == 0) { // 如果没有参数但遇到';'和'{'
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                   "unexpected '%c' in %s:%d",
                                   ch, cf->conf_file->file.name.data,
@@ -446,7 +445,7 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
                 return NGX_OK;
 
             case '}':
-                if (cf->args->nelts > 0) {
+                if (cf->args->nelts > 0) { // '}'前不能有参数
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                   "unexpected '}' in %s:%d",
                                   cf->conf_file->file.name.data,

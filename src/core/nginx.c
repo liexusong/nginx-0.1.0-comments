@@ -368,6 +368,7 @@ ngx_pid_t ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ctx.name = "new binary process";
     ctx.argv = argv;
 
+    // 把listen_socket添加到"NGINX"环境变量中
     var = ngx_alloc(sizeof(NGINX_VAR)
                             + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);

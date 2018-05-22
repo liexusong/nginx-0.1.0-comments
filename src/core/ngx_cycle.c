@@ -164,8 +164,8 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.cycle = cycle;
     conf.pool = pool;
     conf.log = log;
-    conf.module_type = NGX_CORE_MODULE; // 需要读取核心(core)模块的配置
-    conf.cmd_type = NGX_MAIN_CONF;
+    conf.module_type = NGX_CORE_MODULE; // 读取核心(core)模块的配置
+    conf.cmd_type = NGX_MAIN_CONF;      // 读取main命令
 
 
     // 解析配置文件
@@ -181,7 +181,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    // 初始化核心模块(core module), 调用核心模块的init()接口
+    // 调用init_conf()接口初始化核心模块配置上下文
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -281,7 +281,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     // 打开监听的socket
     if (!failed) {
-        if (old_cycle->listening.nelts) {
+        if (old_cycle->listening.nelts) { // 如果上一个周期还有socket在监听
             ls = old_cycle->listening.elts;
             for (i = 0; i < old_cycle->listening.nelts; i++) {
                 ls[i].remain = 0;
@@ -437,11 +437,11 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
-        if (ls[i].remain) { // 如果当前listening socket还有客户端在处理, 先不关闭
+        if (ls[i].remain) { // 如果旧周期的listen_socket在新周期也在用-跳过
             continue;
         }
 
-        if (ngx_close_socket(ls[i].fd) == -1) {
+        if (ngx_close_socket(ls[i].fd) == -1) { // 否则关闭此socket
             ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                           ngx_close_socket_n " %s failed",
                           ls[i].addr_text.data);
@@ -476,20 +476,20 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+    // 首次启动一定会进入这个条件
     if (old_cycle->connections == NULL) {
         /* an old cycle is an init cycle */
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }
 
-    // 如果是热重启而且不是single模式,
-    // 那么就直接返回cycle, 不再执行下面的逻辑
+    // 如果是热重启而且是master进程,
     if (ngx_process == NGX_PROCESS_MASTER) {
         ngx_destroy_pool(old_cycle->pool);
         return cycle;
     }
 
-    // 首次启动或者single模式都会执行到这里;
+    // single模式或者worker进程;
     // 这里的主要工作是创建一个定时器ngx_clean_old_cycles();
     // 定时去清理旧周期的数据;
 

@@ -313,7 +313,7 @@ void ngx_close_connection(ngx_connection_t *c)
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
         return;
     }
-    
+
 #if (NGX_OPENSSL)
 
     if (c->ssl) {
@@ -323,17 +323,17 @@ void ngx_close_connection(ngx_connection_t *c)
             return;
         }
     }
-    
+
 #endif
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
-    
+
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
-    
+
     if (ngx_del_conn) {
         ngx_del_conn(c, NGX_CLOSE_EVENT);
 

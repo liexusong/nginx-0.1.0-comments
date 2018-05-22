@@ -321,7 +321,7 @@ static int ngx_epoll_del_event(ngx_event_t *ev, int event, u_int flags)
 
 /*
  * 与ngx_epoll_add_event()差不多,
- * 不过与与ngx_epoll_add_event()不一样的是,
+ * 不过与ngx_epoll_add_event()不一样的是,
  * ngx_epoll_add_connection()关注所有的事件,
  * 而与ngx_epoll_add_event()只关注某一事件.
  */
@@ -513,7 +513,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
             ngx_accept_mutex_unlock();
             return NGX_ERROR;
-        } 
+        }
 
         lock = 1;
 
