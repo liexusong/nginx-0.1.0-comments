@@ -168,7 +168,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
             /* look up the directive in the appropriate modules */
 
-            if (ngx_modules[m]->type != NGX_CONF_MODULE  /* 如果不是conf模块 */
+            if (ngx_modules[m]->type != NGX_CONF_MODULE     /* 如果不是conf模块 */
                 && ngx_modules[m]->type != cf->module_type) /* 而且模块类型不匹配 */
             {
                 continue;
@@ -256,7 +256,7 @@ char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
                     conf = NULL;
 
-                    // 需要配置上下文实体
+                    // 获取配置上下文的实体, 就是不需要创建配置上下文
                     if (cmd->type & NGX_DIRECT_CONF) {
                         conf = ((void **) cf->ctx)[ngx_modules[m]->index];
 
@@ -359,8 +359,8 @@ static int ngx_conf_read_token(ngx_conf_t *cf)
 
     for ( ;; ) {
 
-        if (b->pos >= b->last) { // 从配置文件中读取一部分数据
-            int last_len = b->pos - start;
+        if (b->pos >= b->last) { // 处理到的位置大于等于缓冲区的数据, 从配置文件中读取一部分数据
+            int last_len = b->pos - start; // 处理到的位置还没确定为一个token
 
             if (cf->conf_file->file.offset
                                  >= ngx_file_size(&cf->conf_file->file.info)) {

@@ -17,30 +17,30 @@ typedef void *            ngx_buf_tag_t;
 typedef struct ngx_buf_s  ngx_buf_t;
 
 struct ngx_buf_s {
-    u_char          *pos;
-    u_char          *last;
+    u_char          *pos;    // 当前处理的位置
+    u_char          *last;   // 当前数据写到的位置
     off_t            file_pos;
     off_t            file_last;
 
     int              type;
     u_char          *start;         /* start of buffer */
     u_char          *end;           /* end of buffer */
-    ngx_buf_tag_t    tag;
+    ngx_buf_tag_t    tag;   // 用于标识当前buffer属于哪个模块
     ngx_file_t      *file;
     ngx_buf_t       *shadow;
 
 
     /* the buf's content could be changed */
-    unsigned         temporary:1;
+    unsigned         temporary:1; // 是否临时缓冲区(可以被修改)
 
     /*
      * the buf's content is in a memory cache or in a read only memory
      * and must not be changed
      */
-    unsigned         memory:1;
+    unsigned         memory:1; // 是否在内存中
 
     /* the buf's content is mmap()ed and must not be changed */
-    unsigned         mmap:1;
+    unsigned         mmap:1; // 是否通过mmap()生成的
 
     unsigned         recycled:1;
     unsigned         in_file:1;

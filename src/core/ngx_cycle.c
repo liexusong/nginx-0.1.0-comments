@@ -37,6 +37,7 @@ static ngx_str_t  error_log = ngx_null_string;
 
 
 // 初始化Nginx生命周期对象
+// 参数 old_cycle 是上一次运行的生命周期对象
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void               *rv;
@@ -73,7 +74,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->root.len = sizeof(NGX_PREFIX) - 1;  // NGX_PREFIX通过configure时指定--prefix参数设置
     cycle->root.data = (u_char *) NGX_PREFIX;
 
-    // paths数组
+    // 初始化paths数组
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
     if (!(cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *)))) {
         ngx_destroy_pool(pool);
@@ -134,8 +135,10 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     // 调用核心模块的create_conf()接口
+    // ngx_modules 由执行configure脚本后生成, 在objs/ngx_modules.c
+    // ngx_modules 代表着nginx支持的模块
     for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
+        if (ngx_modules[i]->type != NGX_CORE_MODULE) { // 只调用core模块
             continue;
         }
 
@@ -147,6 +150,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                 ngx_destroy_pool(pool);
                 return NULL;
             }
+            // 保存到生命周期对象的 conf_ctx 中
             cycle->conf_ctx[ngx_modules[i]->index] = rv;
         }
     }
@@ -169,6 +173,16 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     // 解析配置文件
+    // ngx_conf_parse() 是一个递归调用, 例如解析到include指令, 会继续调用 ngx_conf_parse() 解析配置文件
+    // 或者在配置处理函数里面由函数自主发起 ngx_conf_parse() 调用
+    // 配置文件路径在启动nginx时通过参数指定
+    // 根据上面的代码可知, 这里是读取core模块的配置
+    // 一般core模块有:
+    //      |-> ngx_core_module
+    //      |-> ngx_errlog_module
+    //      |-> ngx_events_module
+    //      +-> ngx_http_module
+    //
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -181,7 +195,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    // 调用init_conf()接口初始化核心模块配置上下文
+    // 调用模块的init_conf()接口初始化核心模块配置上下文
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;

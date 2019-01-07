@@ -10,21 +10,19 @@ ngx_modules由configure之后生成...在objs/ngx_modules.c
 ngx_module_t *ngx_modules[] = {
     // 1) core module
     &ngx_core_module,
-
-    // 2) errlog module
     &ngx_errlog_module,
+    &ngx_events_module,
+    &ngx_http_module,
 
-    // 3) configure module
+    // 2) configure module
     &ngx_conf_module,
 
-    // 4) event module
-    &ngx_events_module,
+    // 3) event module
     &ngx_event_core_module,
     &ngx_rtsig_module,
     &ngx_epoll_module,
 
-    // 5) http modules
-    &ngx_http_module,
+    // 4) http modules
     &ngx_http_core_module,
     &ngx_http_log_module,
     &ngx_http_static_module,
@@ -211,7 +209,6 @@ int main(int argc, char *const *argv)
     ctx.argv = argv;
 
     // 创建一个内存池给cycle使用
-
     if (!(init_cycle.pool = ngx_create_pool(1024, log))) {
         return 1;
     }
@@ -225,7 +222,7 @@ int main(int argc, char *const *argv)
         log->log_level = NGX_LOG_INFO;
     }
 
-    // 初始化操作系统环境
+    // 获取操作系统的一些信息用于更好的运行nginx
     if (ngx_os_init(log) == NGX_ERROR) {
         return 1;
     }

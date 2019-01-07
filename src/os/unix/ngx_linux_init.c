@@ -35,6 +35,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     name[0] = CTL_KERN;
     name[1] = KERN_OSTYPE;
     len = sizeof(ngx_linux_kern_ostype);
+    // 获取操作系统类型
     if (sysctl(name, sizeof(name), ngx_linux_kern_ostype, &len, NULL, 0)
                                                                        == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -45,6 +46,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     name[0] = CTL_KERN;
     name[1] = KERN_OSRELEASE;
     len = sizeof(ngx_linux_kern_osrelease);
+    // 获取操作系统版本
     if (sysctl(name, sizeof(name), ngx_linux_kern_osrelease, &len, NULL, 0)
                                                                        == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -56,6 +58,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     name[0] = CTL_KERN;
     name[1] = KERN_RTSIGMAX;
     len = sizeof(ngx_linux_rtsig_max);
+    // 获取操作系统实时信号的最大值
     if (sysctl(name, sizeof(name), &ngx_linux_rtsig_max, &len, NULL, 0) == -1) {
         ngx_log_error(NGX_LOG_INFO, log, ngx_errno,
                       "sysctl(KERN_RTSIGMAX) failed");
