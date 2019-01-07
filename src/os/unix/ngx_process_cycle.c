@@ -55,6 +55,7 @@ ngx_int_t              ngx_threads_n;
 u_char  master_process[] = "master process";
 
 
+// master-worker模式会进入这个函数
 void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
     char              *title;
@@ -68,6 +69,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     ngx_msec_t         delay;
     ngx_core_conf_t   *ccf;
 
+    // 禁止下面的信号
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
     sigaddset(&set, SIGALRM);
@@ -107,6 +109,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // 启动worker进程
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
 
@@ -306,6 +309,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ch.command = NGX_CMD_OPEN_CHANNEL;
 
     while (n--) {
+        // fork一个新进程, 然后执行 ngx_worker_process_cycle()
         ngx_spawn_process(cycle, ngx_worker_process_cycle, NULL,
                           "worker process", type);
 
@@ -740,7 +744,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
-        ngx_process_events(cycle);
+        ngx_process_events(cycle); // 处理请求的事件, 对于epoll模块就是 ngx_epoll_process_events() 函数
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");

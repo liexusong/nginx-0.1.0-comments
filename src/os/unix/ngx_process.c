@@ -48,6 +48,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     if (respawn != NGX_PROCESS_DETACHED) {
 
         /* Solaris 9 still has no AF_LOCAL */
+        // 创建通信管道
 
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
         {

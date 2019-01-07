@@ -84,10 +84,11 @@ static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                   ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t)),
                   NGX_CONF_ERROR);
 
-    *(ngx_http_conf_ctx_t **) conf = ctx; // 把新创建的配置上下文挂钩起来
+    *(ngx_http_conf_ctx_t **) conf = ctx; // 保存到cycle->ctx[m]中
 
     /* count the number of the http modules and set up their indices */
 
+    // 统计http模块
     ngx_http_max_module = 0;
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {

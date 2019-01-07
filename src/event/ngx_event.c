@@ -90,7 +90,7 @@ ngx_atomic_t  *ngx_stat_writing = &ngx_stat_reading0;
 static ngx_command_t  ngx_events_commands[] = {
 
     { ngx_string("events"),
-      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS, // 这个指令需要修改配置上下文(NGX_MAIN_CONF)
       ngx_events_block,
       0,
       0,
@@ -501,13 +501,14 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_modules[m]->ctx_index = ngx_event_max_module++;
     }
 
+    // 为什么还要申请一个"void *"指针?
     ngx_test_null(ctx, ngx_pcalloc(cf->pool, sizeof(void *)), NGX_CONF_ERROR);
 
     ngx_test_null(*ctx,
                   ngx_pcalloc(cf->pool, ngx_event_max_module * sizeof(void *)),
                   NGX_CONF_ERROR);
 
-    *(void **) conf = ctx;
+    *(void **) conf = ctx; // 更新event对象配置上下文
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
@@ -516,8 +517,10 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         module = ngx_modules[m]->ctx;
 
-        /* create configure context:
+        /* 
+         * create configure context:
          * epoll module is ngx_epoll_create_conf()
+         * (*ctx)[ngx_modules[m]]->ctx_index] = module->create_conf(cf->cycle);
          */
         if (module->create_conf) {
             ngx_test_null((*ctx)[ngx_modules[m]->ctx_index],
@@ -526,9 +529,10 @@ static char *ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    // 解析event{}配置块
     pcf = *cf;
     cf->ctx = ctx;
-    cf->module_type = NGX_EVENT_MODULE;
+    cf->module_type = NGX_EVENT_MODULE; // 表示只处理event模块
     cf->cmd_type = NGX_EVENT_CONF;
     rv = ngx_conf_parse(cf, NULL);
     *cf = pcf;

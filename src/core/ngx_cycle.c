@@ -203,6 +203,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         module = ngx_modules[i]->ctx; // ngx_core_module_t
 
+        // 例如ngx_core_module模块就是: ngx_core_module_init_conf()
         if (module->init_conf) {
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
                                                               == NGX_CONF_ERROR)
@@ -295,7 +296,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     // 打开监听的socket
     if (!failed) {
-        if (old_cycle->listening.nelts) { // 如果上一个周期还有socket在监听
+        if (old_cycle->listening.nelts) { // 如果上一个周期有监听中的地址和端口
             ls = old_cycle->listening.elts;
             for (i = 0; i < old_cycle->listening.nelts; i++) {
                 ls[i].remain = 0;
@@ -308,6 +309,7 @@ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle)
                         continue;
                     }
 
+                    // 如果现在要监听的地址和端口与上一个周期的一样, 那么就使用上一个周期的fd
                     if (ngx_memcmp(nls[n].sockaddr,
                                    ls[i].sockaddr, ls[i].socklen) == 0)
                     {

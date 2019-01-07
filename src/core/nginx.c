@@ -260,6 +260,7 @@ int main(int argc, char *const *argv)
 
     ngx_cycle = cycle;
 
+    // 获取 ngx_core_module 的配置上下文
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     ngx_process = ccf->master ? NGX_PROCESS_MASTER : NGX_PROCESS_SINGLE;
