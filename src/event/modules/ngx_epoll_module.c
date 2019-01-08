@@ -524,11 +524,14 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     log = cycle->log;
 
     // 开始处理可读写的事件
-
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr; // 获取connection
 
         // 验证事件是否陈旧的
+        // 因为在这个循环中某一事件有可能关闭其他事件, 而被关闭的事件还在这个循环中被处理
+        // 所以首先要判断连接的fd是否等于-1, 另外由于这个循环还有可能接收到新的连接,
+        // 而新的连接刚好复用了刚被关闭连接的fd, 这时fd有可能不为-1, 但是并不是此事件触发的,
+        // 所以nginx还有一个instance的标志位来表示事件跟连接是否对应得上
         // 可以参考: http://www.pagefault.info/2010/09/10/processing-stale-event-in-nginx.html
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
