@@ -1,3 +1,4 @@
+![enter image description here](https://raw.githubusercontent.com/liexusong/nginx-0.1.0-comments/master/markdown/process.jpg)
 一般来说nginx有以下几个core模块:
 ```cpp
 * ngx_core_module
