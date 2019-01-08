@@ -583,7 +583,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             } else {
                 wev->ready = 1;
 
-                if (!ngx_accept_mutex_held) {
+                if (!ngx_accept_mutex_held) { // 因为获得accept锁要尽快释放, 所以要把事件放进队列押后处理
                     wev->event_handler(wev);
 
                 } else {
