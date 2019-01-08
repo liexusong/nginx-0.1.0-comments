@@ -529,6 +529,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
         c = event_list[i].data.ptr; // 获取connection
 
         // 验证事件是否陈旧的
+        // 可以参考: http://www.pagefault.info/2010/09/10/processing-stale-event-in-nginx.html
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
 
