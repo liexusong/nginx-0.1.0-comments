@@ -1,11 +1,15 @@
 man 7 epoll会发现这个东西,就是使用epoll中会遇到的问题：
+
 `
 o If using an event cache… If you use an event cache or store all the file descriptors returned from epoll_wait(2), then make sure to provide a way to mark its closure dynamically (i.e., caused by a previous event’s processing). Suppose you receive 100 events from epoll_wait(2), and in event #47 a condition causes event #13 to be closed. If you remove the structure and close(2) the file descriptor for event #13, then your event cache might still say there are events waiting for that file descriptor causing confusion.
 `
+
 这种事件也可以叫做stale event，而下面是man手册提出的解决方法：
+
 `
 One solution for this is to call, during the processing of event 47, epoll_ctl(EPOLL_CTL_DEL) to delete file descriptor 13 and close(2), then mark its associated data structure as removed and link it to a cleanup list. If you find another event for file descriptor 13 in your batch process‐ ing, you will discover the file descriptor had been previously removed and there will be no confusion.
 `
+
 问题很简单，由于大部分的服务器都会有一个连接池。而连接池是通过fd来进行定位，前面处理的事件会影响后面的事件，比如关闭掉了后面的事件，而后关闭掉的事件在当前的循环中还是会被处理，这种情况很好处理，比如设置fd为－1，就可以检测，可是还有一种情况，就是当你关闭了fd，然后设置－1之后，恰好接收到的新的连接的fd刚好和刚才close的fd的值是一样的。此时就会引起混乱了，也就是说我们需要区分事件是不是stale event，或者说是我们方才释放掉的fd被重新使用，而nginx中并没有按照上面man手册里面的方法，它的做法很巧妙，我们来看nginx如何做的。 首先要知道在nginx中是存在一个连接池的，所有的连接的获取和释放都是通过连接池来进行的，nginx中连接池很简单，就是一个简单的数组，有一个free_connections变量保存了所有可以使用的连接，它是一个链表，它的构造是这样子的，每个连接都有一个域data，如果释放一个连接，则这个连接的data就指向当前的free_connects,然后当前的释放的连接直接指向free_connections,也就是一个将连接加入free链表的 动作。
 ```cpp
 void
