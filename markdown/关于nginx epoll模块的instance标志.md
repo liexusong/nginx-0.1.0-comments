@@ -39,39 +39,39 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 	ngx_uint_t instance;
 	ngx_event_t *rev, *wev;
 	ngx_connection_t *c;
-	
+
+	...
+
 	//可以看到获取到的是最新被释放的连接
-	      
 	ngx_cycle->free_connections = c->data;
-	      
-	ngx_cycle->free_connection_n&#8211;;
-	      
+	ngx_cycle->free_connection_n--;
+
 	/* ngx_mutex_unlock */
 	if (ngx_cycle->files) { 
 	    ngx_cycle->files[s] = c;
 	}
-	  
+
 	//保存对应的event，避免内存再次分配
 	rev = c->read;
 	wev = c->write;
-	      
+
 	ngx_memzero(c, sizeof(ngx_connection_t));
 	c->read = rev;
 	c->write = wev;
 	c->fd = s;
 	c->log = log;
-	
+
 	//获取instance
 	instance = rev->instance;
 	ngx_memzero(rev, sizeof(ngx_event_t));
 	ngx_memzero(wev, sizeof(ngx_event_t));
-	
+
 	//这里可以看到将instance去反，用以区分是否是刚才被释放的
 	rev->instance = !instance;
 	wev->instance = !instance;
 	rev->index = NGX_INVALID_INDEX;
 	wev->index = NGX_INVALID_INDEX;
-	
+
 	//data中保存连接
 	rev->data = c;
 	wev->data = c;
@@ -95,9 +95,9 @@ struct epoll_event {
 	epoll_data_t data;
 };
 ```
-ok接下来就来看nginx是如何利用这个指针的,先来看ngx_epoll_add_event函数，这个函数就是加事件到epoll中。然后设置对应的epoll data.
-static ngx_int_t
+ok接下来就来看nginx是如何利用这个指针的,先来看ngx_epoll_add_event函数，这个函数就是加事件到epoll中。然后设置对应的epoll_data.
 ```cpp
+static ngx_int_t
 ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
 	int op;
