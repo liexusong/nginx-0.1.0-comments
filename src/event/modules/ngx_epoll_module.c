@@ -451,7 +451,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
             ngx_accept_disabled--;
 
         } else {
-            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) { // 尝试获得accept锁
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) { // 尝试获得accept锁, 获得了锁才能监听socket
                 return NGX_ERROR;
             }
 
@@ -471,7 +471,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "epoll timer: %d", timer);
 
-    events = epoll_wait(ep, event_list, nevents, timer);
+    events = epoll_wait(ep, event_list, nevents, timer); // 等待事件发生
 
     if (events == -1) {
         err = ngx_errno;
@@ -493,8 +493,8 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "epoll timer: %d, delta: %d", timer, (int) delta);
-    } else {  // 一般这里都是有错误, 错误是未知的
-        if (events == 0) {
+    } else {
+        if (events == 0) { // 没有设置超时而且也没有事件发生, 所以这里有错误发生了
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "epoll_wait() returned no events without timeout");
             ngx_accept_mutex_unlock();
@@ -510,7 +510,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     }
 
     if (events > 0) {
-        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) {
+        if (ngx_mutex_lock(ngx_posted_events_mutex) == NGX_ERROR) { // 单线程模式一定返回true
             ngx_accept_mutex_unlock();
             return NGX_ERROR;
         }
@@ -528,6 +528,7 @@ int ngx_epoll_process_events(ngx_cycle_t *cycle)
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr; // 获取connection
 
+        // 验证事件是否陈旧的
         instance = (uintptr_t) c & 1;
         c = (ngx_connection_t *) ((uintptr_t) c & (uintptr_t) ~1);
 

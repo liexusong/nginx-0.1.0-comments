@@ -113,6 +113,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
 
+    // worker进程不会执行这里, 所以这里必须是master进程执行的
     ngx_new_binary = 0;
     delay = 0;
     live = 1;
@@ -144,7 +145,7 @@ void ngx_master_process_cycle(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "wake up");
 
-        if (ngx_reap) {
+        if (ngx_reap) { // 是否收割worker进程(一般是要退出nginx)
             ngx_reap = 0;
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap childs");
 
@@ -357,7 +358,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     }
 }
 
-
+// 发送信号给所有worker进程
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
     ngx_int_t      i;
@@ -450,7 +451,7 @@ static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     }
 }
 
-
+// 收割worker进程
 static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
 {
     ngx_int_t      i, n;
@@ -550,7 +551,7 @@ static ngx_uint_t ngx_reap_childs(ngx_cycle_t *cycle)
     return live;
 }
 
-
+// 退出master进程
 static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
 {
     ngx_delete_pidfile(cycle);
@@ -562,7 +563,7 @@ static void ngx_master_exit(ngx_cycle_t *cycle, ngx_master_ctx_t *ctx)
     exit(0);
 }
 
-
+// worker进程的主函数
 static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     sigset_t           set;
@@ -642,7 +643,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
-    for (n = 0; n < ngx_last_process; n++) {
+    for (n = 0; n < ngx_last_process; n++) { // 关闭所有其他worker进程的channel[1]
 
         if (ngx_processes[n].pid == -1) {
             continue;
@@ -662,6 +663,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
     }
 
+    // 关闭自己的channel[0]
     if (close(ngx_processes[ngx_process_slot].channel[0]) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "close() failed");
@@ -671,6 +673,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_last_process = 0;
 #endif
 
+    // 把 ngx_channel 添加到事件驱动中进行监听
+    // 事件的处理函数为 ngx_channel_handler()
     if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
                                              ngx_channel_handler) == NGX_ERROR)
     {
@@ -680,7 +684,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_setproctitle("worker process");
 
-#if (NGX_THREADS)
+#if (NGX_THREADS) // 多线程模式(此版本不支持)
 
     if (ngx_time_mutex_init(cycle->log) == NGX_ERROR) {
         /* fatal */
@@ -722,8 +726,8 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
 #endif
 
-    for ( ;; ) {
-        if (ngx_exiting
+    for ( ;; ) {        // worker进程会一直在这个无限循环中进行处理
+        if (ngx_exiting // 如果进程被通知需要退出
             && ngx_event_timer_rbtree == &ngx_event_timer_sentinel)
         {
             ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "exiting");

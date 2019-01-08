@@ -77,7 +77,7 @@ ngx_int_t ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 
 ngx_int_t ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
                            ngx_log_t *log)
-{   
+{
     ssize_t             n;
     ngx_err_t           err;
     struct iovec        iov[1];
@@ -215,7 +215,7 @@ ngx_int_t ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd,
             return NGX_ERROR;
         }
     
-    } else { 
+    } else {
         if (ngx_add_event(ev, event, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
