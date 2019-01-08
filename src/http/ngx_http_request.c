@@ -143,9 +143,9 @@ void ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    ngx_add_timer(rev, c->listening->post_accept_timeout);
+    ngx_add_timer(rev, c->listening->post_accept_timeout); // 设置读超时时间
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) { // 添加到事件监听中
         ngx_http_close_connection(c);
         return;
     }
@@ -318,7 +318,7 @@ static void ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
-    rev->event_handler = ngx_http_process_request_line;
+    rev->event_handler = ngx_http_process_request_line; // 设置下一个读处理函数为ngx_http_process_request_line()
 
 #if (NGX_HTTP_SSL)
 
